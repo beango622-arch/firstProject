@@ -14,8 +14,9 @@ describe('待办事项列表测试', () => {
   let errorMessage;
 
   beforeEach(() => {
-    // 清空之前的 DOM
+    // 清空之前的 DOM 和 localStorage
     document.body.innerHTML = '';
+    localStorage.clear();
 
     // 创建测试用的HTML结构
     container = document.createElement('div');
@@ -250,6 +251,7 @@ describe('待办事项列表测试', () => {
   afterEach(() => {
     // 清理
     document.body.innerHTML = '';
+    localStorage.clear();
   });
 
   describe('新增待办事项', () => {
