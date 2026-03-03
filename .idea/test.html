@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="test.css">
+    <title>待办事项列表</title>
+</head>
+
+<body>
+    <div class="container" id="container">
+        <h1 id="title">待办事项列表</h1>
+        <div class="container-content">
+
+            <div class="content" id="input-content">
+                <input type="text" id="input" placeholder="请输入新增内容" autocomplete="off">
+                <button id="submit">新增</button>
+            </div>
+            <div class="control-group">
+                <label><input type="checkbox" value="1" name="checkbox">全选</label>
+                <div  class="radio-group" id="radioGroup">
+                    <label><input type="radio" value="all" name="radio" class="radioAll" checked>全部</label>
+                    <label><input type="radio" value="select" name="radio" class="radioSelected" >已选中</label>
+                    <label><input type="radio" value="unselect" name="radio" class = "radioUnselect">未选中</label>
+                </div>
+                <button id="deleteSelected">删除已选中</button>
+            </div>
+
+            <div>
+                <ul class="todolist-checkbox" id="todolist">
+                   <!-- 
+                    <li>
+                        <label><input type="checkbox" value="1" name="checkbox" checked>代办事项1</label>
+                        <div class="edit-input">
+                            <button class="edit-button">编辑</button>
+                            <button class="delete-button">删除</button>
+                        </div>
+                    </li>
+                    <li>
+                        <label><input type="checkbox" value="1" name="checkbox">代办事项2</label>
+                        <div class="edit-input">
+                            <button class="edit-button">编辑</button>
+                            <button class="delete-button">删除</button>
+                        </div>
+                    </li>
+              -->
+                </ul>
+  
+            </div>
+        </div>
+    </div>
+
+    <script src="test.js"></script>
+</body>
+
+</html>
