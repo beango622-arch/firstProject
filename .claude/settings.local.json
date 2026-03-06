@@ -13,7 +13,10 @@
       "Bash(git push:*)",
       "Bash(gh:*)",
       "Bash(curl:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(npx skills find:*)",
+      "Bash(npx skills add:*)",
+      "Bash(npx skills list:*)"
     ]
   }
 }
