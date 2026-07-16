@@ -1,0 +1,63 @@
+digraph WarehouseFlow {
+    graph [rankdir=TB, fontname="WenQuanYi Micro Hei", bgcolor="white",
+           labelloc="t", fontsize=26, fontcolor="#1a1a1a",
+           label="核心出入库业务流程图", nodesep=0.45, ranksep=0.6, splines=polyline];
+    node  [fontname="WenQuanYi Micro Hei", fontsize=14, style="filled", penwidth=1.4];
+    edge  [fontname="WenQuanYi Micro Hei", fontsize=12, color="#555555", penwidth=1.3];
+
+    // ---------- 起止 ----------
+    start [label="开始", shape=oval, fillcolor="#4CAF50", fontcolor="white", width=1.2];
+    end   [label="结束", shape=oval, fillcolor="#F44336", fontcolor="white", width=1.2];
+
+    // ---------- 业务类型选择 ----------
+    choose [label="选择业务类型", shape=box, style="filled,rounded", fillcolor="#FFE0B2", color="#F57C00"];
+
+    // ---------- 五种业务类型 ----------
+    node [shape=box, style="filled,rounded", fillcolor="#BBDEFB", color="#1976D2", fontcolor="#0D47A1"];
+    t1 [label="采购入库"];
+    t2 [label="生产入库"];
+    t3 [label="调拨入库"];
+    t4 [label="领用出库"];
+    t5 [label="销售出库"];
+
+    // ---------- 公共流程 ----------
+    subgraph cluster_common {
+        label="公共流程";
+        fontsize=18;
+        fontcolor="#37474F";
+        style="filled,rounded";
+        fillcolor="#F5F5F5";
+        color="#90A4AE";
+        penwidth=1.6;
+
+        create  [label="创建单据",   shape=box, style="filled,rounded", fillcolor="#C8E6C9", color="#388E3C", fontcolor="#1B5E20"];
+        submit  [label="提交审批",   shape=box, style="filled,rounded", fillcolor="#C8E6C9", color="#388E3C", fontcolor="#1B5E20"];
+        judge   [label="审批是否通过", shape=diamond, fillcolor="#FFF9C4", color="#FBC02D", fontcolor="#5D4037", width=1.9, height=1.1];
+        execute [label="执行出入库",  shape=box, style="filled,rounded", fillcolor="#C8E6C9", color="#388E3C", fontcolor="#1B5E20"];
+        stock   [label="更新库存",   shape=box, style="filled,rounded", fillcolor="#B3E5FC", color="#0288D1", fontcolor="#01579B"];
+        record  [label="生成记录",   shape=box, style="filled,rounded", fillcolor="#B3E5FC", color="#0288D1", fontcolor="#01579B"];
+
+        create -> submit;
+        submit -> judge;
+        judge  -> execute [label="通过 (是)", color="#2E7D32", fontcolor="#2E7D32"];
+        judge  -> create  [label="驳回 (否)", color="#C62828", fontcolor="#C62828", constraint=false];
+        execute -> stock;
+        stock  -> record;
+    }
+
+    // ---------- 连接 ----------
+    start -> choose;
+    choose -> t1;
+    choose -> t2;
+    choose -> t3;
+    choose -> t4;
+    choose -> t5;
+
+    t1 -> create;
+    t2 -> create;
+    t3 -> create;
+    t4 -> create;
+    t5 -> create;
+
+    record -> end;
+}
