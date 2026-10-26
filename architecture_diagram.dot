@@ -35,7 +35,8 @@ digraph architecture {
     s1 -> s2;
     s2 -> s3;
     s3 -> s4;
-    s4 -> s5 [label="非终态"];
+    s4 -> s5 [label="非终态\n（候选技能存在）"];
+    s4 -> docfb [label="非终态\n（无答案+无候选技能）"];
     s4 -> s6 [label="终态"];
     s5 -> docfb [label="仍未覆盖"];
     s5 -> s6;
