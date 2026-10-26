@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """生成重构后的创新奖申报材料（通用方案本体 + 编码通(新)案例）"""
 import docx
-from docx.shared import Pt
+from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 
@@ -64,6 +64,16 @@ def add_note(doc, text):
     r = p.add_run(text)
     set_run_font(r, FONT_BODY, 10.5, bold=False)
     return p
+
+
+def add_image(doc, path, width_inches, caption=None):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_after = Pt(4)
+    run = p.add_run()
+    run.add_picture(path, width=Inches(width_inches))
+    if caption:
+        add_note(doc, caption)
 
 
 def add_placeholder(doc, text):
@@ -150,34 +160,8 @@ def build():
     add_body(doc, [('价值主张二：计算资源利用效率与用户体验的动态平衡，而非非此即彼的取舍。', True), ('通过上游单点精确决策、按需触发下游执行、状态组合驱动的终态判断与分阶段渐进交付等机制，把有限的计算资源集中投入到真正有价值的推理环节上。', False)])
 
     add_h2(doc, '2.2 通用架构概览')
-    add_placeholder(doc, '【架构图占位：此处将插入完整技术架构图，呈现人工两个入口、核心应答链路与知识自增长闭环的整体协同关系。图示内容与形式将在文字稿确认后另行设计讨论。】')
     add_body(doc, [('系统按"预处理→核心应答→渐进交付与人工协同→知识自增长"四个阶段构建通用链路，各阶段的编排逻辑与具体业务平台解耦，接入新场景只需替换知识库、SKILL清单、文档库等数据层。架构中的人工环节，是当前AI能力尚无法完全自主覆盖复杂判断与知识缺口填补的务实安排，而非设计追求的理念本身。', False)])
-    add_mono_block(doc,
-                    '用户发起交互：问机器人 / 直接想找人工\n'
-                    '    │\n'
-                    '    ├── 直接想找人工 → 熔断检查（宏观管控）：近1小时内是否已向机器人提问？\n'
-                    '    │                     ├─ 否：拦截，引导先向机器人提问（并入下方主链路）\n'
-                    '    │                     └─ 是：放行 → 进入人工支持\n'
-                    '    │\n'
-                    '    └── 向机器人提问\n'
-                    '          ↓\n'
-                    '        ① 问题预处理：查询标准化 + 提问有效性过滤\n'
-                    '          ↓\n'
-                    '        ② 知识库检索与总结（先完成检索）\n'
-                    '          ↓\n'
-                    '        ③ 上游技能决策Agent：判断候选技能（单点精确决策）\n'
-                    '          ↓\n'
-                    '        ④ 状态组合判断：知识库答案状态 × 候选技能是否存在 → 是否终态\n'
-                    '          ↓（非终态才继续）\n'
-                    '        ⑤ 下游技能执行Agent（纯执行）→ 仍未覆盖 → 文档推荐兜底\n'
-                    '          ↓\n'
-                    '        ⑥ 三段式渐进交付：按终态判断决定每阶段是否展示"人工支持"按钮\n'
-                    '          ↓（用户点击按钮）\n'
-                    '        进入人工支持\n'
-                    '          ↓\n'
-                    '        知识自增长（两条独立路径）\n'
-                    '          ├─ 路径A·机器识别：问题池自动分级 → 人工review补齐\n'
-                    '          └─ 路径B·人工主动：支持对话中快捷沉淀')
+    add_image(doc, 'architecture_diagram.png', 5.0, caption='图1 整体架构图：两个人工入口、核心应答链路与知识自增长闭环')
 
     add_h2(doc, '2.3 问题预处理：查询标准化与提问有效性过滤')
     add_body(doc, [('用户提问口语化、表达随意，直接检索容易"文不对题"。系统先通过大模型将原始问题改写为书面化标准问句，再进入检索加工。同时引入提问有效性过滤：规则层过滤明显无效内容，语义层判断是否包含真实的问题、报错或阻碍，只有通过双层过滤的提问才计入熔断计时（具体规则不做展开，避免被针对性绕过）。', False)])
