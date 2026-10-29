@@ -7,12 +7,13 @@
           输入        ：JSON字符串，包含question等字段，用question作为两份文件的关联键
           耗时        ：本次调用总耗时
           Token消耗   ：本次调用总token消耗
-          （以及可能存在的、按节点拆分的其它"XX耗时"/"XXToken消耗"列）
-          节点Id（开始）/节点名称（开始）等 ：节点标识信息，不参与指标计算
+      本脚本只比较"耗时""Token消耗"这两个总量字段，不分析节点级别耗时/token拆分。
 
 输出（写入一个Excel文件，多个sheet）：
     - 配对明细     ：按question关联后，逐条列出双Agent/单Agent各项成本指标及差值
-    - 汇总统计     ：每个成本指标的均值/中位数/P90差值、平均增幅百分比
+    - 汇总统计     ：每个成本指标的均值/中位数/P90差值，以及更稳健的"总量比值"增幅
+                     （总量比值 = 双Agent总量之和 / 单Agent总量之和，不受个别样本分母过小
+                       导致的离群百分比影响，比"逐行百分比取平均"更可靠，优先参考这一列）
     - 未匹配_双Agent：只在双Agent文件里出现、单Agent文件里找不到对应question的行
     - 未匹配_单Agent：只在单Agent文件里出现、双Agent文件里找不到对应question的行
     - 解析异常     ：输入列JSON解析失败、或缺少question字段的行
@@ -28,6 +29,7 @@ import sys
 import pandas as pd
 
 COL_INPUT = '输入'
+TARGET_METRICS = ['耗时', 'Token消耗']
 
 
 def extract_question(raw_input):
@@ -46,19 +48,14 @@ def extract_question(raw_input):
     return str(q).strip()
 
 
-def is_metric_column(col_name):
-    """判定一列是否是需要参与配对差值计算的成本指标列（耗时/Token消耗类），
-    排除节点Id/节点名称等标识类列。"""
-    name = str(col_name)
-    if 'id' in name.lower() or '名称' in name:
-        return False
-    return ('耗时' in name) or ('token' in name.lower())
-
-
 def load_and_tag(path, label):
     df = pd.read_excel(path)
     if COL_INPUT not in df.columns:
         raise ValueError(f'{path} 缺少"{COL_INPUT}"列，现有字段：{list(df.columns)}')
+
+    missing_metrics = [c for c in TARGET_METRICS if c not in df.columns]
+    if missing_metrics:
+        raise ValueError(f'{path} 缺少字段：{missing_metrics}；现有字段：{list(df.columns)}')
 
     df = df.copy()
     df['_question'] = df[COL_INPUT].apply(extract_question)
@@ -77,60 +74,57 @@ def load_and_tag(path, label):
         parse_fail = pd.concat([parse_fail, dup], ignore_index=True)
         ok = ok.drop_duplicates('_question', keep=False)
 
-    metric_cols = [c for c in ok.columns if is_metric_column(c)]
-    if not metric_cols:
-        raise ValueError(f'{path} 没有识别到任何"耗时"/"Token消耗"相关的指标列，请检查列名')
-
-    return ok, parse_fail, metric_cols
+    return ok, parse_fail
 
 
-def build_comparison(dual_df, dual_metrics, single_df, single_metrics):
-    common_metrics = [c for c in dual_metrics if c in single_metrics]
-    if not common_metrics:
-        raise ValueError(
-            f'两份文件没有同名的成本指标列可比较。\n'
-            f'双Agent文件指标列：{dual_metrics}\n'
-            f'单Agent文件指标列：{single_metrics}'
-        )
-
-    dual_keep = dual_df[['_question'] + common_metrics].add_suffix('_双Agent')
+def build_comparison(dual_df, single_df):
+    dual_keep = dual_df[['_question'] + TARGET_METRICS].add_suffix('_双Agent')
     dual_keep = dual_keep.rename(columns={'_question_双Agent': '_question'})
-    single_keep = single_df[['_question'] + common_metrics].add_suffix('_单Agent')
+    single_keep = single_df[['_question'] + TARGET_METRICS].add_suffix('_单Agent')
     single_keep = single_keep.rename(columns={'_question_单Agent': '_question'})
 
     merged = dual_keep.merge(single_keep, on='_question', how='inner')
     merged = merged.rename(columns={'_question': '问题'})
 
-    for col in common_metrics:
+    for col in TARGET_METRICS:
         a = merged[f'{col}_双Agent']
         b = merged[f'{col}_单Agent']
         merged[f'{col}_差值(双-单)'] = a - b
-        merged[f'{col}_增幅%'] = (a - b) / b.replace(0, pd.NA) * 100
 
-    # 按"问题、每个指标的双/单/差值/增幅%"的顺序重排列，便于阅读
+    # 按"问题、每个指标的双/单/差值"的顺序重排列，便于阅读
     ordered_cols = ['问题']
-    for col in common_metrics:
-        ordered_cols += [f'{col}_双Agent', f'{col}_单Agent', f'{col}_差值(双-单)', f'{col}_增幅%']
+    for col in TARGET_METRICS:
+        ordered_cols += [f'{col}_双Agent', f'{col}_单Agent', f'{col}_差值(双-单)']
     merged = merged[ordered_cols]
 
-    return merged, common_metrics
+    return merged
 
 
-def build_summary(detail_df, common_metrics):
+def build_summary(detail_df):
     rows = []
     n = len(detail_df)
-    for col in common_metrics:
+    for col in TARGET_METRICS:
+        dual_vals = detail_df[f'{col}_双Agent']
+        single_vals = detail_df[f'{col}_单Agent']
         diff = detail_df[f'{col}_差值(双-单)']
-        pct = detail_df[f'{col}_增幅%']
+
+        dual_sum = dual_vals.sum()
+        single_sum = single_vals.sum()
+        ratio = (dual_sum / single_sum) if single_sum else float('nan')
+        ratio_pct = (ratio - 1) * 100 if pd.notna(ratio) else float('nan')
+
         rows.append({
             '指标': col,
             '样本数': n,
-            '双Agent均值': detail_df[f'{col}_双Agent'].mean(),
-            '单Agent均值': detail_df[f'{col}_单Agent'].mean(),
+            '双Agent均值': dual_vals.mean(),
+            '单Agent均值': single_vals.mean(),
             '差值均值': diff.mean(),
             '差值中位数': diff.median(),
             '差值P90': diff.quantile(0.9),
-            '平均增幅%': pct.mean(),
+            '双Agent总量': dual_sum,
+            '单Agent总量': single_sum,
+            '总量比值(双/单)': ratio,
+            '总量比值增幅%': ratio_pct,
         })
     return pd.DataFrame(rows)
 
@@ -148,11 +142,11 @@ def main():
     parser.add_argument('--output', default='dual_agent_cost_comparison.xlsx', help='输出Excel文件路径')
     args = parser.parse_args()
 
-    dual_df, dual_parse_fail, dual_metrics = load_and_tag(args.dual_agent_file, '双Agent')
-    single_df, single_parse_fail, single_metrics = load_and_tag(args.single_agent_file, '单Agent')
+    dual_df, dual_parse_fail = load_and_tag(args.dual_agent_file, '双Agent')
+    single_df, single_parse_fail = load_and_tag(args.single_agent_file, '单Agent')
 
-    detail, common_metrics = build_comparison(dual_df, dual_metrics, single_df, single_metrics)
-    summary = build_summary(detail, common_metrics)
+    detail = build_comparison(dual_df, single_df)
+    summary = build_summary(detail)
 
     unmatched_dual = find_unmatched(dual_df, single_df, '双Agent')
     unmatched_single = find_unmatched(single_df, dual_df, '单Agent')
@@ -170,7 +164,7 @@ def main():
     print(f'仅双Agent文件存在（未匹配）：{len(unmatched_dual)}')
     print(f'仅单Agent文件存在（未匹配）：{len(unmatched_single)}')
     print(f'解析异常行数：{len(parse_fail_all)}')
-    print(f'参与比较的指标列：{common_metrics}')
+    print(f'参与比较的指标列：{TARGET_METRICS}')
     print()
     print('汇总统计：')
     print(summary.to_string(index=False))
