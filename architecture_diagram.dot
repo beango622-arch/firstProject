@@ -1,0 +1,74 @@
+digraph architecture {
+    rankdir=TB;
+    graph [fontname="WenQuanYi Micro Hei", splines=polyline, nodesep=0.5, ranksep=0.6, bgcolor="white"];
+    node [fontname="WenQuanYi Micro Hei", fontsize=13, style="filled,rounded", shape=box, penwidth=1.2];
+    edge [fontname="WenQuanYi Micro Hei", fontsize=11, color="#555555", penwidth=1.1];
+
+    start [label="用户发起交互", shape=oval, fillcolor="#EDEDED", color="#888888"];
+
+    fuse [label="熔断检查（宏观管控）\n近1小时内是否已向机器人提问？", shape=diamond, fillcolor="#FFE9B3", color="#C9972B", fontsize=12];
+    block [label="拦截\n引导先向机器人提问", fillcolor="#F5F5F5", color="#999999"];
+
+    s1 [label="① 问题预处理\n查询标准化 + 提问有效性过滤", fillcolor="#DCEBFC", color="#4A86C5"];
+    s2 [label="② 知识库检索与总结\n（先完成检索）", fillcolor="#DCEBFC", color="#4A86C5"];
+    s3 [label="③ 上游·技能决策Agent\n判断候选技能（单点精确决策）", fillcolor="#DCEBFC", color="#4A86C5"];
+    s4 [label="④ 状态组合判断\n知识库状态 × 候选技能是否存在\n→ 是否终态？", shape=diamond, fillcolor="#FFE9B3", color="#C9972B", fontsize=12];
+    s5 [label="⑤ 下游·技能执行Agent\n（纯执行）", fillcolor="#DCEBFC", color="#4A86C5"];
+    docfb [label="文档推荐兜底", fillcolor="#DCEBFC", color="#4A86C5"];
+    s6 [label="⑥ 三段式渐进交付\n按终态判断展示\"人工支持\"按钮", fillcolor="#DCEBFC", color="#4A86C5"];
+
+    human [label="人工支持\n（承接复杂判断问题）", fillcolor="#DCF4DC", color="#4F9A4F"];
+
+    pathA [label="路径A · 机器识别\n问题池自动分级（L1/L2/L3）", fillcolor="#DCEBFC", color="#4A86C5"];
+    review [label="人工定期review补齐", fillcolor="#DCF4DC", color="#4F9A4F"];
+    pathB [label="路径B · 人工主动\n支持对话中快捷沉淀", fillcolor="#DCF4DC", color="#4F9A4F"];
+
+    data [label="知识库 / SKILL清单\n（可插拔数据层）", shape=cylinder, fillcolor="#EDEDED", color="#888888"];
+
+    start -> fuse [label="直接想找人工"];
+    start -> s1 [label="向机器人提问"];
+
+    fuse -> block [label="否"];
+    fuse -> human [label="是：放行"];
+    block -> s1 [style=dashed, label="并入主链路", constraint=true];
+
+    s1 -> s2;
+    s2 -> s3;
+    s3 -> s4;
+    s4 -> s5 [label="非终态\n（候选技能存在）"];
+    s4 -> docfb [label="非终态\n（无答案+无候选技能）"];
+    s4 -> s6 [label="终态"];
+    s5 -> docfb [label="仍未覆盖"];
+    s5 -> s6;
+    docfb -> s6;
+    s6 -> human [label="用户点击\n人工支持按钮"];
+
+    human -> pathA;
+    human -> pathB;
+    pathA -> review;
+    review -> data [label="补齐缺口"];
+    pathB -> data [label="沉淀QA"];
+
+    data -> s2 [style=dashed, color="#999999", label="回流反哺", constraint=false];
+    data -> s3 [style=dashed, color="#999999", constraint=false];
+
+    { rank=same; s5; docfb; }
+    { rank=same; pathA; pathB; }
+
+    subgraph cluster_legend {
+        label="图例";
+        fontname="WenQuanYi Micro Hei";
+        fontsize=12;
+        style=dashed;
+        color="#AAAAAA";
+        margin=12;
+        rank=sink;
+        node [shape=box, fontsize=11, width=1.3, height=0.32];
+        edge [style=invis];
+        lg1 [label="机器自动环节", fillcolor="#DCEBFC", color="#4A86C5"];
+        lg2 [label="人工环节", fillcolor="#DCF4DC", color="#4F9A4F"];
+        lg3 [label="判断/决策点", shape=diamond, fillcolor="#FFE9B3", color="#C9972B"];
+        lg4 [label="数据层", shape=cylinder, fillcolor="#EDEDED", color="#888888"];
+        lg1 -> lg2 -> lg3 -> lg4;
+    }
+}
