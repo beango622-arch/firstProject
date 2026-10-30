@@ -69,9 +69,9 @@ def label(ax, x, y, text, fontsize=13, color='#444444', bold=True, ha='center', 
 
 
 def main():
-    fig, ax = plt.subplots(figsize=(13, 17.5))
+    fig, ax = plt.subplots(figsize=(13, 18.5))
     ax.set_xlim(0, 100)
-    ax.set_ylim(0, 158)
+    ax.set_ylim(0, 168)
     ax.invert_yaxis()
     ax.axis('off')
 
@@ -130,7 +130,7 @@ def main():
     arrow(ax, (costBox[0] - 10, costBox[1] + costBox[3] / 2), (compC1[0], compC1[1] - compC1[3] / 2), connectionstyle='arc3,rad=-0.1')
     arrow(ax, (costBox[0] + 10, costBox[1] + costBox[3] / 2), (compC2[0], compC2[1] - compC2[3] / 2), connectionstyle='arc3,rad=0.1')
 
-    concBox = box(ax, 50, 151, 90, 14,
+    concBox = box(ax, 50, 159, 90, 14,
                    '结论：双Agent分段式响应，是三种候选方案中唯一能同时兼顾答案质量与资源效率的架构选择',
                    GREEN_F, GREEN_E, fontsize=13, bold=True, wrap_width=30)
 
