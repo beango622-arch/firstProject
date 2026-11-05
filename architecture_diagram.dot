@@ -7,7 +7,7 @@ digraph architecture {
     start [label="用户发起交互", shape=oval, fillcolor="#EDEDED", color="#888888"];
 
     fuse [label="熔断检查（宏观管控）\n近1小时内是否已向机器人提问？", shape=diamond, fillcolor="#FFE9B3", color="#C9972B", fontsize=12];
-    block [label="拦截\n引导先向机器人提问", fillcolor="#F5F5F5", color="#999999"];
+    block [label="暂不开放人工\n引导先向机器人提问", fillcolor="#F5F5F5", color="#999999"];
 
     s1 [label="① 问题预处理\n查询标准化 + 提问有效性过滤", fillcolor="#DCEBFC", color="#4A86C5"];
     s2 [label="② 知识库检索与总结\n（先完成检索）", fillcolor="#DCEBFC", color="#4A86C5"];
@@ -23,7 +23,7 @@ digraph architecture {
     review [label="人工定期review补齐", fillcolor="#DCF4DC", color="#4F9A4F"];
     pathB [label="路径B · 人工主动\n支持对话中快捷沉淀", fillcolor="#DCF4DC", color="#4F9A4F"];
 
-    data [label="知识库 / SKILL清单\n（可插拔数据层）", shape=cylinder, fillcolor="#EDEDED", color="#888888"];
+    data [label="知识库 / SKILL清单\n（可配置数据层）", shape=cylinder, fillcolor="#EDEDED", color="#888888"];
 
     start -> fuse [label="直接想找人工"];
     start -> s1 [label="向机器人提问"];

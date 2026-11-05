@@ -31,6 +31,8 @@ def token_width(tok):
 
 
 def wrap_cn(text, width):
+    if '\n' in text:
+        return '\n'.join(wrap_cn(part, width) for part in text.split('\n'))
     lines, cur, cur_w = [], '', 0.0
     for tok in tokenize(text):
         w = token_width(tok)
@@ -90,7 +92,7 @@ def main():
     yB = [24, 47, 70, 93]
 
     boxA1 = box(ax, 25, yA[0], bw, bh,
-                '特征一：推理性问题占多数（68.2%），超出知识库检索的覆盖能力', BLUE_F, BLUE_E)
+                '问题一：推理性问题占多数（68.2%），超出知识库检索的覆盖能力', BLUE_F, BLUE_E)
     boxA2 = box(ax, 25, yA[1], bw, bh,
                 '需要引入基于Agent的技能推理能力，弥补知识库的能力边界', BLUE_F, BLUE_E)
     boxA3 = box(ax, 25, yA[2], bw, bh,
@@ -99,7 +101,7 @@ def main():
                 '结论：技能执行能力创造实质增量价值，而非锦上添花', BLUE_F, BLUE_E, bold=True)
 
     boxB1 = box(ax, 75, yB[0], bw, bh,
-                '特征二：响应速度与答案质量天然存在权衡', ORANGE_F, ORANGE_E)
+                '问题二：答得快和答得好\n很难兼得', ORANGE_F, ORANGE_E)
     boxB2 = box(ax, 75, yB[1], bw, bh,
                 '为兼顾两者，选择分阶段渐进交付机制，而非"等执行完"或"只给知识库答案"', ORANGE_F, ORANGE_E)
     boxB3 = box(ax, 75, yB[2], bw, bh,
@@ -123,7 +125,7 @@ def main():
 
     cBw, cBh, yC = 40, 19, 137
     compC1 = box(ax, 25, yC, cBw, cBh,
-                  '若换成"知识库优先拦截"：93个候选会话中，58.1%本应送达的更优答案将被100%错失', RED_F, RED_E)
+                  '若换成"知识库优先"：93个候选会话中，58.1%本应送达的更优答案将被100%错失', RED_F, RED_E)
     compC2 = box(ax, 75, yC, cBw, cBh,
                   '若换成"技能优先直接执行"：50个无候选技能的会话盲目执行，约空转109万Token / 64分钟', RED_F, RED_E)
 
