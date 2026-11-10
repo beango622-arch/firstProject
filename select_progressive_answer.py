@@ -11,9 +11,9 @@
     2) 技能输出结果不存在，知识库输出结果存在     -> 取知识库输出结果
     3) 两者都不存在                              -> 取"未检索到答案"
 
-"不存在"的判定：
-    知识库输出结果：空值、空白字符串、"未检索到答案"、"未检索到相关信息"
-    技能输出结果  ：空值、空白字符串、"Agent执行异常"、"NO_SKILL_MATCHED"
+"不存在"的判定（按"包含"匹配，不要求完全一致）：
+    知识库输出结果：空值、空白字符串，或包含"未检索到答案"、"未检索到相关信息"
+    技能输出结果  ：空值、空白字符串，或包含"Agent执行异常"、"NO_SKILL_MATCHED"（不区分大小写）
 
 输出：在原有列基础上新增两列，写入新的Excel文件：
     最终答案  ：按上述逻辑取到的答案
@@ -31,8 +31,8 @@ import pandas as pd
 
 NO_ANSWER_TEXT = '未检索到答案'
 
-KB_INVALID_VALUES = {NO_ANSWER_TEXT, '未检索到相关信息'}
-SKILL_INVALID_VALUES = {'Agent执行异常', 'NO_SKILL_MATCHED'}
+KB_INVALID_KEYWORDS = (NO_ANSWER_TEXT, '未检索到相关信息')
+SKILL_INVALID_KEYWORDS = ('Agent执行异常', 'NO_SKILL_MATCHED')
 
 SOURCE_SKILL = '技能'
 SOURCE_KB = '知识库'
@@ -40,23 +40,25 @@ SOURCE_NONE = '无答案'
 
 
 def _normalize(value):
-    """转成去掉首尾空白和成对引号的字符串；空值返回空字符串。"""
+    """转成去掉首尾空白的字符串；空值返回空字符串。"""
     if value is None or (not isinstance(value, str) and pd.isna(value)):
         return ''
-    text = str(value).strip()
-    if len(text) >= 2 and text[0] == text[-1] and text[0] in ('"', "'"):
-        text = text[1:-1].strip()
-    return text
+    return str(value).strip()
+
+
+def _contains_any(text, keywords):
+    upper_text = text.upper()
+    return any(k.upper() in upper_text for k in keywords)
 
 
 def has_kb_answer(value):
     text = _normalize(value)
-    return text != '' and text not in KB_INVALID_VALUES
+    return text != '' and not _contains_any(text, KB_INVALID_KEYWORDS)
 
 
 def has_skill_answer(value):
     text = _normalize(value)
-    return text != '' and text.upper() not in {v.upper() for v in SKILL_INVALID_VALUES}
+    return text != '' and not _contains_any(text, SKILL_INVALID_KEYWORDS)
 
 
 def select_answer(kb_output, skill_output):
