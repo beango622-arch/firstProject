@@ -17,9 +17,17 @@ def contains_any(text, keywords):
     return any(k.upper() in upper_text for k in keywords)
 
 
+def to_int(value):
+    try:
+        return int(float(normalize(value)))
+    except (TypeError, ValueError):
+        return None
+
+
 def handler(params):
     kb_text = normalize(params.get("promptOut"))
     skill_text = normalize(params.get("skillResult"))
+    skill_count = to_int(params.get("skillCount"))
     if skill_text and AGENT_ERROR_TEXT in skill_text:
         return AGENT_ERROR_TEXT
     if skill_text and not contains_any(skill_text, SKILL_INVALID_KEYWORDS):
@@ -28,6 +36,6 @@ def handler(params):
         answer = kb_text
     else:
         answer = NO_ANSWER_TEXT
-    if APPEND_NO_SKILL_TAG and NO_SKILL_TAG.upper() in skill_text.upper():
+    if APPEND_NO_SKILL_TAG and skill_count == 0:
         return answer + "\n\n[" + NO_SKILL_TAG + "]"
     return answer
