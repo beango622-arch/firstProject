@@ -16,10 +16,9 @@
     - 只在一张表中有效（另一张表无该行，或该行因异常被剔除） -> 取该表的那一行
 
 输出（写入一个Excel文件，多个sheet）：
-    - 合并结果     ：每个评估数据行号一行，附"答案来源""选择依据"，以及渐进交付的累计耗时/token
-                     （耗时、token均为从头累计：技能表存在该行则取技能表的值，否则取知识库表的值，
-                       不是两表相加；注意"耗时""消耗token"两列是被选中那一行的值，算成本请用累计列）
-    - 汇总统计     ：来源分布、有效答案覆盖率（两个答案中至少一个评估通过）、累计耗时/token均值
+    - 合并结果     ：每个评估数据行号一行，附"答案来源""选择依据"
+                     （两次都是完整执行的工作流，耗时、token本身就是完整值，直接取被选中那一行的值）
+    - 汇总统计     ：来源分布、有效答案覆盖率（两个答案中至少一个评估通过）、耗时/token/评估分数均值
     - 两表对照明细 ：同一行号在两张表中的评估结果、耗时、token并列，便于核对
     - 异常数据     ：行号缺失、行号重复、评估结果取值不合法的行（已从合并中剔除）
 
@@ -146,9 +145,6 @@ def merge(kb_valid, skill_valid, kb_bad_ids=frozenset(), skill_bad_ids=frozenset
         record['问题'] = extract_question(chosen[COL_INPUT])
         record['答案来源'] = source
         record['选择依据'] = basis
-        cost_row = skill_row if skill_row is not None else kb_row
-        record['渐进交付累计耗时'] = cost_row[COL_COST_MS]
-        record['渐进交付累计token'] = cost_row[COL_TOKEN]
         merged_rows.append(record)
 
         compare_rows.append({
@@ -168,7 +164,7 @@ def merge(kb_valid, skill_valid, kb_bad_ids=frozenset(), skill_bad_ids=frozenset
 
     merged = pd.DataFrame(merged_rows)
     merged = merged[[COL_ID, '问题', COL_INPUT, COL_COST_MS, COL_TOKEN, COL_SCORE, COL_RESULT, COL_REASON,
-                     '答案来源', '选择依据', '渐进交付累计耗时', '渐进交付累计token']]
+                     '答案来源', '选择依据']]
     return merged, pd.DataFrame(compare_rows)
 
 
@@ -184,7 +180,7 @@ def build_summary(merged):
     rows.append(('有效答案覆盖数（两个答案中至少一个评估通过）', covered))
     rows.append(('有效答案覆盖率', covered / total if total else float('nan')))
 
-    for col in ('渐进交付累计耗时', '渐进交付累计token'):
+    for col in (COL_COST_MS, COL_TOKEN, COL_SCORE):
         rows.append((f'{col}均值', pd.to_numeric(merged[col], errors='coerce').mean()))
 
     for basis, n in merged['选择依据'].value_counts().items():
