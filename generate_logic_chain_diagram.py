@@ -78,8 +78,8 @@ def main():
     ax.axis('off')
 
     label(ax, 50, 4, '机制成效的论证思路', fontsize=18, color='#1a1a1a')
-    label(ax, 25, 13, '评测问题一：能否让更多问题得到有效答案', fontsize=12.5, color='#1f5fa8')
-    label(ax, 75, 13, '评测问题二：增加多少计算成本，节省多少人力', fontsize=12.5, color='#b5651d')
+    label(ax, 25, 12, '评测问题一：能否让更多问题得到有效答案\n（验证价值主张一）', fontsize=12.5, color='#1f5fa8')
+    label(ax, 75, 12, '评测问题二：增加多少计算成本，节省多少人力\n（验证价值主张二）', fontsize=12.5, color='#b5651d')
 
     BLUE_F, BLUE_E = '#e8f1fb', '#1f5fa8'
     ORANGE_F, ORANGE_E = '#fdf1e6', '#b5651d'
@@ -96,7 +96,7 @@ def main():
     ]
     boxB = [
         box(ax, 75, ys[0], bw, bh, '问题：推理必然带来\n成本和耗时的上升', ORANGE_F, ORANGE_E),
-        box(ax, 75, ys[1], bw, bh, '方式：先判断提问是否有效、\n有无候选技能，减少无谓推理', ORANGE_F, ORANGE_E),
+        box(ax, 75, ys[1], bw, bh, '方式：先判断提问是否有效、\n有无候选技能，再按需推理', ORANGE_F, ORANGE_E),
         box(ax, 75, ys[2], bw, bh, '评测：计算每新增一个有效答案\n增加的计算成本，并折算人力', ORANGE_F, ORANGE_E),
         box(ax, 75, ys[3], bw, bh, '结果：增加的计算成本\n与节省的人力对照', ORANGE_F, ORANGE_E, bold=True),
     ]
