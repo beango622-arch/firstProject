@@ -71,72 +71,50 @@ def label(ax, x, y, text, fontsize=13, color='#444444', bold=True, ha='center', 
 
 
 def main():
-    fig, ax = plt.subplots(figsize=(13, 18.5))
+    fig, ax = plt.subplots(figsize=(13, 13.8))
     ax.set_xlim(0, 100)
-    ax.set_ylim(0, 172)
+    ax.set_ylim(0, 128)
     ax.invert_yaxis()
     ax.axis('off')
 
     label(ax, 50, 4, '机制成效的论证思路', fontsize=18, color='#1a1a1a')
-    label(ax, 25, 13, '答案是否更有效', fontsize=12.5, color='#1f5fa8')
-    label(ax, 75, 13, '资源是否花在需要推理的问题上', fontsize=12.5, color='#b5651d')
+    label(ax, 25, 13, '评测问题一：能否让更多问题得到有效答案', fontsize=12.5, color='#1f5fa8')
+    label(ax, 75, 13, '评测问题二：增加多少计算成本，节省多少人力', fontsize=12.5, color='#b5651d')
 
     BLUE_F, BLUE_E = '#e8f1fb', '#1f5fa8'
     ORANGE_F, ORANGE_E = '#fdf1e6', '#b5651d'
-    AMBER_F, AMBER_E = '#fff4da', '#c9962b'
     GREEN_F, GREEN_E = '#e8f6ee', '#1e8449'
 
     bw, bh = 40, 16
-    yA = [24, 47, 70, 93]
-    yB = [24, 47, 70, 93]
+    ys = [24, 47, 70, 93]
 
-    boxA1 = box(ax, 25, yA[0], bw, bh,
-                '问题：推理性问题占68.2%，光靠知识库检索答不好', BLUE_F, BLUE_E)
-    boxA2 = box(ax, 25, yA[1], bw, bh,
-                '方式：知识库、技能推理、文档推荐多源协同', BLUE_F, BLUE_E)
-    boxA3 = box(ax, 25, yA[2], bw, bh,
-                '评测：与知识库优先、技能优先\n同批120题对比', BLUE_F, BLUE_E)
-    boxA4 = box(ax, 25, yA[3], bw, bh,
-                '结果：有效答案覆盖率提升', BLUE_F, BLUE_E, bold=True)
+    boxA = [
+        box(ax, 25, ys[0], bw, bh, '问题：推理性问题占68.2%，\n光靠知识库检索答不好', BLUE_F, BLUE_E),
+        box(ax, 25, ys[1], bw, bh, '方式：知识库检索、技能推理、文档推荐多源协同', BLUE_F, BLUE_E),
+        box(ax, 25, ys[2], bw, bh, '评测：与知识库优先、技能优先\n同批120题对比有效答案覆盖率', BLUE_F, BLUE_E),
+        box(ax, 25, ys[3], bw, bh, '结果：新增有效答案\n覆盖率提升', BLUE_F, BLUE_E, bold=True),
+    ]
+    boxB = [
+        box(ax, 75, ys[0], bw, bh, '问题：推理必然带来\n成本和耗时的上升', ORANGE_F, ORANGE_E),
+        box(ax, 75, ys[1], bw, bh, '方式：先判断提问是否有效、\n有无候选技能，减少无谓推理', ORANGE_F, ORANGE_E),
+        box(ax, 75, ys[2], bw, bh, '评测：计算每新增一个有效答案\n增加的计算成本，并折算人力', ORANGE_F, ORANGE_E),
+        box(ax, 75, ys[3], bw, bh, '结果：增加的计算成本\n与节省的人力对照', ORANGE_F, ORANGE_E, bold=True),
+    ]
 
-    boxB1 = box(ax, 75, yB[0], bw, bh,
-                '问题：推理必然带来成本和耗时的上升', ORANGE_F, ORANGE_E)
-    boxB2 = box(ax, 75, yB[1], bw, bh,
-                '方式：先判断提问是否有效、有无候选技能，再决定是否推理', ORANGE_F, ORANGE_E)
-    boxB3 = box(ax, 75, yB[2], bw, bh,
-                '评测：无候选技能的问题，对比技能优先的token消耗', ORANGE_F, ORANGE_E)
-    boxB4 = box(ax, 75, yB[3], bw, bh,
-                '结果：无谓推理消耗降低', ORANGE_F, ORANGE_E, bold=True)
+    for col in (boxA, boxB):
+        for x1, x2 in zip(col, col[1:]):
+            arrow(ax, (x1[0], x1[1] + x1[3] / 2), (x2[0], x2[1] - x2[3] / 2))
 
-    for x1, x2 in [(boxA1, boxA2), (boxA2, boxA3), (boxA3, boxA4)]:
-        arrow(ax, (x1[0], x1[1] + x1[3] / 2), (x2[0], x2[1] - x2[3] / 2))
-    for x1, x2 in [(boxB1, boxB2), (boxB2, boxB3), (boxB3, boxB4)]:
-        arrow(ax, (x1[0], x1[1] + x1[3] / 2), (x2[0], x2[1] - x2[3] / 2))
+    label(ax, 50, 106, '两个问题的答案，共同回答这套机制是否值得采用', fontsize=11.5, color='#555555')
 
-    label(ax, 50, 105, '两条线各自成立，一起回答成本是否值得', fontsize=11.5, color='#555555')
-
-    costBox = box(ax, 50, 116, 86, 13,
-                   '代价：整体推理消耗高于单一来源策略，要用节约的人力来衡量是否值得',
-                   AMBER_F, AMBER_E, fontsize=12.5, bold=True, wrap_width=36)
-
-    arrow(ax, (boxA4[0], boxA4[1] + boxA4[3] / 2), (36, costBox[1] - costBox[3] / 2), connectionstyle='arc3,rad=0.15')
-    arrow(ax, (boxB4[0], boxB4[1] + boxB4[3] / 2), (64, costBox[1] - costBox[3] / 2), connectionstyle='arc3,rad=-0.15')
-
-    cBw, cBh, yC = 40, 17, 140
-    compC1 = box(ax, 25, yC, cBw, cBh,
-                  '新增的有效答案，意味着少一次人工接手，折算为节约的人力', GREEN_F, GREEN_E)
-    compC2 = box(ax, 75, yC, cBw, cBh,
-                  '无效提问被过滤，不再进入推理\n每日节约的token按估算折算', GREEN_F, GREEN_E)
-
-    arrow(ax, (costBox[0] - 10, costBox[1] + costBox[3] / 2), (compC1[0], compC1[1] - compC1[3] / 2), connectionstyle='arc3,rad=-0.1')
-    arrow(ax, (costBox[0] + 10, costBox[1] + costBox[3] / 2), (compC2[0], compC2[1] - compC2[3] / 2), connectionstyle='arc3,rad=0.1')
-
-    concBox = box(ax, 50, 162, 90, 13,
-                   '结论：以更高的推理投入，换取更高的有效答案覆盖率和更少的人工处理',
+    concBox = box(ax, 50, 118, 90, 13,
+                   '结论：以增加的计算成本，换取更高的有效答案覆盖率和节省的人力',
                    GREEN_F, GREEN_E, fontsize=13, bold=True, wrap_width=36)
 
-    arrow(ax, (compC1[0], compC1[1] + compC1[3] / 2), (40, concBox[1] - concBox[3] / 2), connectionstyle='arc3,rad=0.12', color='#1e8449')
-    arrow(ax, (compC2[0], compC2[1] + compC2[3] / 2), (60, concBox[1] - concBox[3] / 2), connectionstyle='arc3,rad=-0.12', color='#1e8449')
+    arrow(ax, (boxA[3][0], boxA[3][1] + boxA[3][3] / 2), (36, concBox[1] - concBox[3] / 2),
+          connectionstyle='arc3,rad=0.15', color='#1e8449')
+    arrow(ax, (boxB[3][0], boxB[3][1] + boxB[3][3] / 2), (64, concBox[1] - concBox[3] / 2),
+          connectionstyle='arc3,rad=-0.15', color='#1e8449')
 
     plt.tight_layout()
     plt.savefig('logic_chain_diagram.png', dpi=170, bbox_inches='tight', facecolor='white')

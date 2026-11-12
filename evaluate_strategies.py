@@ -23,6 +23,13 @@
     - 每个有效答案的成本：总token（总耗时）除以评估通过的题数
     - 逐题配对：两两对比"都通过/仅A通过/仅B通过/都不通过"的题数
 
+增量成本与人力折算：渐进交付相对知识库优先、技能优先
+    - 增加的token（耗时）总量 = 渐进交付总量 - 对方总量
+    - 净新增有效答案数 = 渐进交付有效答案数 - 对方有效答案数
+    - 每新增一个有效答案增加的token（耗时）= 增加的总量 / 净新增有效答案数（净新增不大于0时为空）
+    - 传入--daily-questions（日均问题量）和--human-minutes（人工单题平均处理时长，分钟）时，另折算
+      每日节省人工时间（小时）= 新增有效答案占比 × 日均问题量 × 人工单题平均处理时长 / 60
+
 第三步：无候选技能问题的节约token（验证"减少无谓推理"，需要同时传入--skill-first）
     - 渐进交付工作流在没有候选技能时，答案里会带固定标识（默认NO_SKILL_MATCHED），
       脚本据此标记"无候选技能"的问题。答案列自动识别，也可用--answer-col指定。
@@ -33,6 +40,7 @@
 输出（写入一个Excel文件，多个sheet）：
     - 三策略对比       ：三种策略的汇总指标
     - 配对对比         ：两两逐题配对的题数
+    - 增量成本与人力折算 ：渐进交付相对另外两种策略的增量成本、净新增有效答案、折算的人力
     - 逐题对比明细     ：每个评估数据行号在三种策略下的评估结果、分数、耗时、token
     - 无候选技能节约_汇总 / _明细 ：无候选技能问题的节约token（传了--skill-first且识别到答案列时生成）
     - 渐进交付合并结果 ：每个行号一行，附"答案来源""选择依据"
@@ -44,7 +52,8 @@
     python3 evaluate_strategies.py --progressive-kb 渐进_第一次输出.xlsx \
         --progressive-skill 渐进_第二次输出.xlsx --kb-first 知识库优先.xlsx \
         --skill-first 技能优先.xlsx [--answer-col 答案列名] [--no-skill-tag 标识]
-        [--daily-filtered 每日过滤数] [--sheet SHEET] [--output 输出路径]
+        [--daily-filtered 每日过滤数] [--daily-questions 日均问题量 --human-minutes 人工单题处理分钟]
+        [--sheet SHEET] [--output 输出路径]
 """
 
 import argparse
@@ -317,6 +326,46 @@ def build_strategy_comparison(strategies, common_ids):
     return pd.DataFrame(summary_rows), pd.DataFrame(detail_rows)
 
 
+def build_incremental_cost(strategies, common_ids, daily_questions, human_minutes):
+    """渐进交付相对知识库优先、技能优先的增量：多花的成本、净新增的有效答案、折算的人力。"""
+    prog = strategies['渐进交付']
+    n = len(common_ids)
+
+    def totals(rows):
+        sub = [rows[i] for i in common_ids]
+        passed = sum(1 for r in sub if r[COL_RESULT] == RESULT_PASS)
+        tokens = pd.to_numeric(pd.Series([r[COL_TOKEN] for r in sub]), errors='coerce').sum()
+        costs = pd.to_numeric(pd.Series([r[COL_COST_MS] for r in sub]), errors='coerce').sum()
+        return passed, tokens, costs
+
+    prog_pass, prog_tokens, prog_costs = totals(prog)
+    rows = []
+    for base_name in ('知识库优先', '技能优先'):
+        if base_name not in strategies:
+            continue
+        base_pass, base_tokens, base_costs = totals(strategies[base_name])
+        extra_valid = prog_pass - base_pass
+        extra_tokens = prog_tokens - base_tokens
+        extra_costs = prog_costs - base_costs
+        has_gain = extra_valid > 0
+        record = {
+            '对比': f'渐进交付 相对 {base_name}',
+            '对比题数': n,
+            '渐进交付有效答案数': prog_pass,
+            '对方有效答案数': base_pass,
+            '净新增有效答案数': extra_valid,
+            '增加的token总量': extra_tokens,
+            '每新增一个有效答案增加的token': extra_tokens / extra_valid if has_gain else float('nan'),
+            '增加的耗时总量(毫秒)': extra_costs,
+            '每新增一个有效答案增加的耗时(毫秒)': extra_costs / extra_valid if has_gain else float('nan'),
+            '新增有效答案占比': extra_valid / n if n else float('nan'),
+        }
+        if daily_questions is not None and human_minutes is not None:
+            record['每日节省人工时间(小时)'] = (extra_valid / n) * daily_questions * human_minutes / 60 if n else float('nan')
+        rows.append(record)
+    return pd.DataFrame(rows)
+
+
 def build_pairwise(strategies, common_ids):
     names = list(strategies)
     rows = []
@@ -357,6 +406,8 @@ def main():
     parser.add_argument('--no-skill-tag', default=DEFAULT_NO_SKILL_TAG, help='无候选技能时答案里包含的固定标识')
     parser.add_argument('--daily-filtered', type=float,
                         help='每日被提问有效性过滤的问题数，用于估算每日节约的token（可选）')
+    parser.add_argument('--daily-questions', type=float, help='日均问题量，用于把新增有效答案折算为节省的人工时间（可选）')
+    parser.add_argument('--human-minutes', type=float, help='人工单题平均处理时长（分钟），与--daily-questions一起使用（可选）')
     parser.add_argument('--sheet', default=0, help='Excel的sheet名或索引（对所有表生效），默认第一个sheet')
     parser.add_argument('--output', default='strategy_comparison.xlsx', help='输出Excel路径')
     args = parser.parse_args()
@@ -389,6 +440,8 @@ def main():
         summary, detail = build_strategy_comparison(strategies, common_ids)
         sheets['三策略对比'] = summary
         sheets['配对对比'] = build_pairwise(strategies, common_ids)
+        sheets['增量成本与人力折算'] = build_incremental_cost(
+            strategies, common_ids, args.daily_questions, args.human_minutes)
         sheets['逐题对比明细'] = detail
     no_skill_ids, has_answer_col = find_no_skill_ids([kb_valid, skill_valid], args.no_skill_tag)
     if '技能优先' in strategies:
@@ -419,6 +472,8 @@ def main():
         print(sheets['三策略对比'].to_string(index=False))
         print()
         print(sheets['配对对比'].to_string(index=False))
+        print()
+        print(sheets['增量成本与人力折算'].to_string(index=False))
         if '无候选技能节约_汇总' in sheets:
             print()
             print(sheets['无候选技能节约_汇总'].to_string(index=False))
