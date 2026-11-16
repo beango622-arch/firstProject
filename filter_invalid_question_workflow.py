@@ -1,6 +1,4 @@
 import json
-import re
-import unicodedata
 
 QUESTION_KEY = "question"
 VALID = "VALID"
@@ -16,11 +14,7 @@ PURE_HUMAN_REQUESTS = (
     "客服", "在线客服", "找客服", "真人",
 )
 
-ZERO_WIDTH_PATTERN = re.compile("[\u200b\u200c\u200d\u2060\ufeff]")
-SAME_CHAR_RUN_PATTERN = re.compile(r"([^\W\d_])\1{%d,}" % MAX_SAME_CHAR_RUN)
-FRAGMENT_PATTERN = re.compile(
-    r"^(.{%d,%d}?)\1{%d,}$" % (FRAGMENT_LEN_RANGE[0], FRAGMENT_LEN_RANGE[1], MIN_FRAGMENT_REPEATS - 1)
-)
+ZERO_WIDTH_CHARS = ("\u200b", "\u200c", "\u200d", "\u2060", "\ufeff")
 
 
 def extract_question(raw):
@@ -38,9 +32,41 @@ def extract_question(raw):
 
 
 def to_effective_text(text):
-    text = unicodedata.normalize("NFKC", text)
-    text = ZERO_WIDTH_PATTERN.sub("", text).lower()
-    return "".join(ch for ch in text if unicodedata.category(ch)[0] in ("L", "N"))
+    chars = []
+    for ch in text:
+        code = ord(ch)
+        if 0xFF01 <= code <= 0xFF5E:
+            ch = chr(code - 0xFEE0)
+        elif code == 0x3000:
+            ch = " "
+        if ch in ZERO_WIDTH_CHARS:
+            continue
+        if ch.isalnum():
+            chars.append(ch.lower())
+    return "".join(chars)
+
+
+def has_long_char_run(text):
+    run = 0
+    previous = ""
+    for ch in text:
+        if ch.isalpha() and ch == previous:
+            run += 1
+        else:
+            run = 1
+        previous = ch
+        if run > MAX_SAME_CHAR_RUN:
+            return True
+    return False
+
+
+def is_repeated_fragment(text):
+    total = len(text)
+    for size in range(FRAGMENT_LEN_RANGE[0], FRAGMENT_LEN_RANGE[1] + 1):
+        if total % size == 0 and total // size >= MIN_FRAGMENT_REPEATS:
+            if text == text[:size] * (total // size):
+                return True
+    return False
 
 
 def check_rules(question):
@@ -49,9 +75,9 @@ def check_rules(question):
         return "EMPTY"
     if len(effective) <= MIN_EFFECTIVE_LEN:
         return "LEN_SHORT"
-    if SAME_CHAR_RUN_PATTERN.search(effective):
+    if has_long_char_run(effective):
         return "REPEAT_CHAR"
-    if FRAGMENT_PATTERN.match(effective):
+    if is_repeated_fragment(effective):
         return "REPEAT_FRAGMENT"
     if effective in PURE_HUMAN_REQUESTS:
         return "HUMAN_ONLY"
