@@ -10,6 +10,7 @@
     Rag工作状态   组内出现 正常/未检索到相关信息（按此优先级）→ 取该值，否则 未进行知识库检索
     Doc工作状态   组内出现 执行异常/NO_DOC_MATCHED/正常（按此优先级）→ 取该值，否则 未进行文档检索
     会话开始时间  取组内最早时间；用户问题取最早一条非空；用户姓名取第一个非空
+    机器人ID      会话内唯一，取组内非空值；创建时间取组内最早的创建时间
     回答答案      组内非空且不重复的答案按换行拼接
     会话ID或用户ID缺失的行无法合并，各自单独成行
 """
@@ -28,6 +29,8 @@ COL_DOC = 'Doc工作状态'
 COL_USER_NAME = '用户姓名'
 COL_USER_ID = '用户ID'
 COL_MANUAL = '拉起人工'
+COL_ROBOT = '机器人ID'
+COL_CREATED = '创建时间'
 
 STATUS_RULES = {
     COL_AGENT: (['Agent执行异常', 'NO_SKILL_MATCHED', '正常'], '未进行技能检索'),
@@ -35,8 +38,8 @@ STATUS_RULES = {
     COL_DOC: (['Agent执行异常', 'NO_DOC_MATCHED', '正常'], '未进行文档检索'),
 }
 
-OUTPUT_COLS = [COL_USER_ID, COL_USER_NAME, COL_SESSION, COL_TIME, COL_QUESTION,
-               COL_ANSWER, COL_MANUAL, COL_AGENT, COL_RAG, COL_DOC, '合并记录数']
+OUTPUT_COLS = [COL_USER_ID, COL_USER_NAME, COL_SESSION, COL_ROBOT, COL_TIME, COL_CREATED,
+               COL_QUESTION, COL_ANSWER, COL_MANUAL, COL_AGENT, COL_RAG, COL_DOC, '合并记录数']
 
 
 def read_table(path, sheet):
@@ -66,7 +69,9 @@ def merge_group(g):
         COL_USER_ID: non_empty(g[COL_USER_ID]),
         COL_USER_NAME: non_empty(g[COL_USER_NAME]),
         COL_SESSION: non_empty(g[COL_SESSION]),
+        COL_ROBOT: non_empty(g[COL_ROBOT]),
         COL_TIME: '',
+        COL_CREATED: '',
         COL_QUESTION: non_empty(g[COL_QUESTION]),
         COL_ANSWER: '\n\n'.join(dict.fromkeys(
             str(v).strip() for v in g[COL_ANSWER] if pd.notna(v) and str(v).strip())),
@@ -75,9 +80,14 @@ def merge_group(g):
     }
     t = g['_parsed_time'].dropna()
     if len(t):
-        row[COL_TIME] = t.iloc[0].strftime('%Y-%m-%d %H:%M:%S')
+        row[COL_TIME] = t.min().strftime('%Y-%m-%d %H:%M:%S')
     else:
         row[COL_TIME] = non_empty(g[COL_TIME])
+    c = g['_parsed_created'].dropna()
+    if len(c):
+        row[COL_CREATED] = c.min().strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        row[COL_CREATED] = non_empty(g[COL_CREATED])
     for col, (keywords, default) in STATUS_RULES.items():
         row[col] = merge_status(g[col], keywords, default)
     return row
@@ -92,7 +102,8 @@ def main():
 
     df = read_table(args.input, args.sheet)
     missing_cols = [c for c in [COL_SESSION, COL_TIME, COL_QUESTION, COL_ANSWER, COL_AGENT,
-                                COL_RAG, COL_DOC, COL_USER_NAME, COL_USER_ID, COL_MANUAL]
+                                COL_RAG, COL_DOC, COL_USER_NAME, COL_USER_ID, COL_MANUAL,
+                                COL_ROBOT, COL_CREATED]
                     if c not in df.columns]
     if missing_cols:
         print(f'缺少字段：{missing_cols}；现有字段：{list(df.columns)}')
@@ -100,6 +111,8 @@ def main():
 
     df['_parsed_time'] = pd.to_datetime(
         df[COL_TIME].astype(str).str.replace('：', ':', regex=False), errors='coerce')
+    df['_parsed_created'] = pd.to_datetime(
+        df[COL_CREATED].astype(str).str.replace('：', ':', regex=False), errors='coerce')
 
     has_key = df[COL_SESSION].notna() & (df[COL_SESSION].astype(str).str.strip() != '') \
         & df[COL_USER_ID].notna() & (df[COL_USER_ID].astype(str).str.strip() != '')
